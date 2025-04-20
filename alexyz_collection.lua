@@ -46,7 +46,7 @@ SMODS.Joker { -- Seeing Things
     },
     atlas = 'alexyz_jokers',
     pos = {
-        x = 0,
+        x = 1,
         y = 0
     },
     cost = 1,
