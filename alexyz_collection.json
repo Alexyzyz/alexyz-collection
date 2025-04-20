@@ -1,0 +1,14 @@
+{
+	"id": "alexyz",
+	"name": "Alexyz's Collection",
+	"display_name": "Alexyz's Collection",
+	"author": ["alexyz"],
+	"description": "A small Balatro mod with characters from various media I like thrown into the Joker roster.",
+	"prefix": "alexyz",
+	"main_file": "alexyz_collection.lua",
+	"badge_colour": "d66727",
+    "dependencies": [
+        "Steamodded (>=1.0.0~BETA-0404a)"
+    ],
+    "version": "1.0.0"
+}
