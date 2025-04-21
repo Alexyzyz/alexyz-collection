@@ -10,12 +10,13 @@ SMODS.Atlas {
 
 
 SMODS.Joker { -- Chunter
-    name = "Chunter",
+    name = "The Hunter",
     key = "chunter",
     loc_txt = {
-        ['name'] = 'Chunter',
+        ['name'] = 'The Hunter',
         ['text'] = {
-            'Does absolutely {C:attention}nothing.{}'
+            'Does absolutely',
+            '{C:attention}nothing{}'
         }
     },
     atlas = 'alexyz_jokers',
@@ -39,9 +40,9 @@ SMODS.Joker { -- Seeing Things
         ['text'] = {
             'After each played hand,',
             'turn a random {C:attention}Consumable{} card',
-            'into a random {C:tarot}Tarot{} card.',
+            'into a random {C:tarot}Tarot{} card',
             '{C:inactive}({C:green}1 in 15{C:inactive} chance of turning into',
-            '{C:inactive}a random {C:spectral}Spectral{C:inactive} card instead.){}'
+            '{C:inactive}a random {C:spectral}Spectral{C:inactive} card instead){}'
         }
     },
     atlas = 'alexyz_jokers',
@@ -102,11 +103,64 @@ SMODS.Joker { -- Seeing Things
     end
 }
 
+SMODS.Joker { -- Bonus Paycheck
+    name = "Bonus Paycheck",
+    key = "bonus_paycheck",
+    loc_txt = {
+        ['name'] = 'Bonus Paycheck',
+        ['text'] = {
+            'Played {C:attention}Bonus{} and {C:attention}Mult{}',
+            'cards give {C:money}$1{} when scored',
+            '{C:inactive}({C:green}1 in 2{C:inactive} chance',
+            '{C:inactive}to give {C:money}$2{C:inactive} instead)'
+        }
+    },
+    atlas = 'alexyz_jokers',
+    pos = {
+        x = 2,
+        y = 0
+    },
+    cost = 1,
+    rarity = 1,
+    blueprint_compat = true,
+    eternal_compat = true,
+    unlocked = true,
+    discovered = true,
+
+    calculate = function(self, card, context)
+        if context.cardarea == G.play and context.individual and
+            (SMODS.get_enhancements(context.other_card)["m_bonus"] == true or
+                SMODS.get_enhancements(context.other_card)["m_mult"] == true) then
+            local is_bonus = false
+            local earned_money = 1
+            if pseudorandom('bonus_paycheck') < G.GAME.probabilities.normal / 2 then
+                is_bonus = true
+                earned_money = 2
+            end
+
+            G.GAME.dollar_buffer = (G.GAME.dollar_buffer or 0) + earned_money
+            G.E_MANAGER:add_event(Event({
+                func = (function()
+                    G.GAME.dollar_buffer = 0; return true
+                end)
+            }))
+
+            card_eval_status_text(context.blueprint_card or card, 'extra', nil, nil, nil,
+                { message = is_bonus and 'Bonus!' or 'Paid!' })
+
+            return {
+                dollars = earned_money,
+                card = context.other_card
+            }
+        end
+    end
+}
+
 -- Challenges
 
 SMODS.Challenge {
     name = "Real Run: Seeing Things",
-    key = "testreal_carl",
+    key = "real_carl",
     loc_txt = {
         ['name'] = 'Real Run: Seeing Things'
     },
@@ -129,7 +183,6 @@ SMODS.Challenge {
     }
 }
 
-
 SMODS.Challenge {
     name = "Test: Seeing Things",
     key = "test_carl",
@@ -148,6 +201,68 @@ SMODS.Challenge {
     },
     consumeables = {
         { id = 'c_magician' }
+    },
+    vouchers = {},
+    deck = {
+        type = 'Challenge Deck'
+    },
+    restrictions = {
+        banned_cards = {},
+        banned_tags = {},
+        banned_other = {}
+    }
+}
+
+SMODS.Challenge {
+    name = "Real Run: Bonus Paycheck",
+    key = "real_bonus_paycheck",
+    loc_txt = {
+        ['name'] = 'Real Run: Bonus Paycheck'
+    },
+    rules = {
+        custom = {},
+        modifiers = {}
+    },
+    jokers = {
+        { id = 'j_alexyz_bonus_paycheck' },
+    },
+    consumeables = {
+        { id = 'c_heirophant' },
+        { id = 'c_empress' },
+    },
+    vouchers = {},
+    deck = {
+        type = 'Challenge Deck'
+    },
+    restrictions = {
+        banned_cards = {},
+        banned_tags = {},
+        banned_other = {}
+    }
+}
+
+SMODS.Challenge {
+    name = "Test: Bonus Paycheck",
+    key = "test_bonus_paycheck",
+    loc_txt = {
+        ['name'] = 'Test: Bonus Paycheck'
+    },
+    rules = {
+        custom = {},
+        modifiers = {
+            { id = 'hands',            value = 999 },
+            { id = 'consumable_slots', value = 5 }
+        }
+    },
+    jokers = {
+        { id = 'j_alexyz_bonus_paycheck' },
+    },
+    consumeables = {
+        { id = 'c_heirophant' },
+        { id = 'c_heirophant' },
+        { id = 'c_heirophant' },
+        { id = 'c_empress' },
+        { id = 'c_empress' }
     },
     vouchers = {},
     deck = {
