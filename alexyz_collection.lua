@@ -127,6 +127,11 @@ SMODS.Joker { -- Bonus Paycheck
     unlocked = true,
     discovered = true,
 
+    loc_vars = function(self, info_queue, card)
+        info_queue[#info_queue + 1] = G.P_CENTERS.m_bonus
+        info_queue[#info_queue + 1] = G.P_CENTERS.m_mult
+    end,
+
     calculate = function(self, card, context)
         if context.cardarea == G.play and context.individual and
             (SMODS.get_enhancements(context.other_card)["m_bonus"] == true or
@@ -152,6 +157,68 @@ SMODS.Joker { -- Bonus Paycheck
                 dollars = earned_money,
                 card = context.other_card
             }
+        end
+    end
+}
+
+SMODS.Joker { -- To the Stars
+    name = "To the Stars",
+    key = "to_the_stars",
+    loc_txt = {
+        ['name'] = 'To the Stars',
+        ['text'] = {
+            'While {C:attention}inactive{}, {C:red}decrease{} level',
+            'of played hand and activate{}.',
+            'While {C:attention}active{}, {C:green}increase{} level',
+            'of played hand and deactivate',
+            '{C:inactive}(#1#){}'
+        }
+    },
+    atlas = 'alexyz_jokers',
+    pos = {
+        x = 3,
+        y = 0
+    },
+    cost = 1,
+    rarity = 1,
+    blueprint_compat = true,
+    eternal_compat = true,
+    unlocked = true,
+    discovered = true,
+
+    config = {
+        extra = {
+            is_active = false,
+            state_text = 'Inactive'
+        },
+    },
+
+    loc_vars = function(self, info_queue, card)
+        return { vars = { card.ability.extra.state_text } }
+    end,
+
+    calculate = function(self, card, context)
+        if context.before then
+            local hand_name = context.scoring_name
+
+            if card.ability.extra.is_active then
+                card_eval_status_text(card, 'extra', nil, nil, nil, { message = 'Deposit!' })
+                level_up_hand(nil, hand_name, nil, 1)
+                card.ability.extra.state_text = 'Inactive'
+                card.ability.extra.is_active = false
+            elseif G.GAME.hands[hand_name].level > 1 then
+                card_eval_status_text(card, 'extra', nil, nil, nil, { message = 'Withdraw!' })
+                level_up_hand(nil, hand_name, nil, -1)
+                card.ability.extra.state_text = 'Active!'
+                card.ability.extra.is_active = true
+
+                -- Make this Joker throb after withdrawing a level
+                -- until it deposits the level
+                local eval = function()
+                    return card.ability.extra.is_active == true
+                end
+                juice_card_until(card, eval, true)
+            end
         end
     end
 }
@@ -275,6 +342,33 @@ SMODS.Challenge {
     }
 }
 
+SMODS.Challenge {
+    name = "Test: To the Stars",
+    key = "test_to_the_stars",
+    loc_txt = {
+        ['name'] = 'Test: To the Stars'
+    },
+    rules = {
+        custom = {},
+        modifiers = {
+            { id = 'hands', value = 999 },
+        }
+    },
+    jokers = {
+        { id = 'j_alexyz_to_the_stars' },
+    },
+    consumeables = {},
+    vouchers = {},
+    deck = {
+        type = 'Challenge Deck'
+    },
+    restrictions = {
+        banned_cards = {},
+        banned_tags = {},
+        banned_other = {}
+    }
+}
+
 -- Helper functions
 
 function swap_tarot(target_card)
@@ -354,29 +448,13 @@ function swap_tarot(target_card)
     local new_center = G.P_CENTERS[new_center_key]
 
     target_card = overwrite_card(new_center, target_card)
-
-    --[=====[
-    target_card:set_ability(new_center)
-    -- NOTE: This is a sin. I should not be hard-setting this value.
-    -- But for some reason, center_key won't get set properly otherwise, so...
-    target_card.config.center_key = new_center_key
-    target_card.debuff = false
-    --]=====]
 end
 
 function overwrite_card(ref_center, new_card, card_scale, playing_card, strip_edition)
     local new_card = new_card
 
-    --[=====[
-    local instantiated_card = Card(ref_card.T.x, ref_card.T.y, G.CARD_W * (card_scale or 1), G.CARD_H * (card_scale or 1),
-        G.P_CARDS.empty,
-        G.P_CENTERS.c_base, { playing_card = playing_card })
-    --]=====]
-
-    new_card:set_ability(ref_center)                     -- new_card:set_ability(ref_card.config.center)
-    new_card.ability.type = ref_center.config.type or '' -- new_card.ability.type = ref_card.ability.type
-    -- This shouldn't be necessary when we're only working with Tarot and Spectral cards
-    -- new_card:set_base(ref_card.config.card)
+    new_card:set_ability(ref_center)
+    new_card.ability.type = ref_center.config.type or ''
 
     -- START: Emulate what Card:set_ability does
     local ref_ability
@@ -415,30 +493,6 @@ function overwrite_card(ref_center, new_card, card_scale, playing_card, strip_ed
             new_card.ability[k] = v
         end
     end
-
-    -- These deal with stripping editions and checking for Joker unlocks
-    -- I don't think it's necessary
-
-    --[=====[
-    if not strip_edition then
-        new_card:set_edition(ref_card.edition or {}, nil, true)
-    end
-    check_for_unlock({ type = 'have_edition' })
-    new_card:set_seal(ref_card.seal, true)
-    --]=====]
-
-    -- These make sure the new card shares the same params and debuff and pinned statuses as the old card
-    -- Ref cards don't have these properties; rather, the new cards themselves already have them ontheir own
-
-    --[=====[
-    if ref_card.params then
-        new_card.params = ref_card.params
-        new_card.params.playing_card = playing_card
-    end
-
-    new_card.debuff = ref_card.debuff
-    new_card.pinned = ref_card.pinned
-    --]=====]
 
     return new_card
 end
