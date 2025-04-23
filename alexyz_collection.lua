@@ -237,7 +237,7 @@ SMODS.Joker { -- Peer Pressure
     },
     atlas = 'alexyz_jokers',
     pos = {
-        x = 3,
+        x = 4,
         y = 0
     },
     cost = 1,
@@ -282,7 +282,7 @@ SMODS.Joker { -- Peer Pressure
             local pressure_is_useful = random_scoring_card.base.suit ~= non_scoring_card.base.suit
 
             card_eval_status_text(random_scoring_card, 'extra', nil, nil, nil,
-                { message = pressure_is_useful and 'Pressure!' or 'Conformed!' })
+                { message = pressure_is_useful and 'Pressure!' or 'Conform!' })
 
             if pressure_is_useful then
                 G.E_MANAGER:add_event(Event({
