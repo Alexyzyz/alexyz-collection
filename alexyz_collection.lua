@@ -223,6 +223,87 @@ SMODS.Joker { -- To the Stars
     end
 }
 
+SMODS.Joker { -- Peer Pressure
+    name = "Peer Pressure",
+    key = "peer_pressure",
+    loc_txt = {
+        ['name'] = 'Peer Pressure',
+        ['text'] = {
+            'If hand contains {C:attention}five scoring cards{}',
+            'with {C:attention}only two suits{}, change the suit',
+            'of the leftmost card of the lesser suit',
+            'into the greater suit, and lose {C:money}$2{}'
+        }
+    },
+    atlas = 'alexyz_jokers',
+    pos = {
+        x = 3,
+        y = 0
+    },
+    cost = 1,
+    rarity = 1,
+    blueprint_compat = true,
+    eternal_compat = true,
+    unlocked = true,
+    discovered = true,
+
+    calculate = function(self, card, context)
+        if context.cardarea == G.jokers and context.before then
+            local tally_suit = {
+                Spade = {},
+                Heart = {},
+                Club = {},
+                Diamond = {},
+            }
+            local unique_suits_count = 0
+            local greatest_suit_count = 0
+            local greatest_suit
+
+            for i = 1, #context.scoring_hand do
+                local curr_card = context.scoring_hand[i]
+                local curr_card_suit = curr_card.base.suit
+
+                if not tally_suit[curr_card_suit] then
+                    unique_suits_count = unique_suits_count + 1
+                    tally_suit[curr_card_suit] = { card }
+                else
+                    table.insert(tally_suit[curr_card_suit], 1, card)
+                end
+
+                if #tally_suit[curr_card_suit] > greatest_suit_count then
+                    greatest_suit_count = #tally_suit[curr_card_suit]
+                    greatest_suit = curr_card_suit
+                end
+            end
+
+            if unique_suits_count ~= 2 then
+                return
+            end
+
+            for i = 1, #context.scoring_hand do
+                local curr_card = context.scoring_hand[i]
+                local curr_card_suit = curr_card.base.suit
+
+                if curr_card_suit ~= greatest_suit then
+                    G.E_MANAGER:add_event(Event({
+                        trigger = 'after',
+                        delay = 0.1,
+                        func = function()
+                            curr_card:juice_up(0.3, 0.3)
+                            curr_card:change_suit(greatest_suit); return true
+                        end
+                    }))
+
+                    return {
+                        message = 'Convert!',
+                        card = card
+                    }
+                end
+            end
+        end
+    end
+}
+
 -- Challenges
 
 SMODS.Challenge {
@@ -355,7 +436,35 @@ SMODS.Challenge {
         }
     },
     jokers = {
-        { id = 'j_alexyz_to_the_stars' },
+        { id = 'j_alexyz_to_the_stars' }
+    },
+    consumeables = {},
+    vouchers = {},
+    deck = {
+        type = 'Challenge Deck'
+    },
+    restrictions = {
+        banned_cards = {},
+        banned_tags = {},
+        banned_other = {}
+    }
+}
+
+SMODS.Challenge {
+    name = "Test: Peer Pressure",
+    key = "test_peer_pressure",
+    loc_txt = {
+        ['name'] = 'Test: Peer Pressure'
+    },
+    rules = {
+        custom = {},
+        modifiers = {
+            { id = 'hands', value = 999 },
+        }
+    },
+    jokers = {
+        { id = 'j_alexyz_peer_pressure' },
+        { id = 'j_splash' }
     },
     consumeables = {},
     vouchers = {},
@@ -442,7 +551,7 @@ function swap_tarot(target_card)
 
     -- Fall back to Strength
     local new_center_key = 'c_strength'
-    if table_length(pool) > 0 then
+    if get_table_length(pool) > 0 then
         new_center_key = pseudorandom_element(pool, pseudoseed('hallucinate'))
     end
     local new_center = G.P_CENTERS[new_center_key]
@@ -506,7 +615,7 @@ function print_table(t)
     end
 end
 
-function table_length(t)
+function get_table_length(t)
     local count = 0
     for _ in pairs(t) do
         count = count + 1
