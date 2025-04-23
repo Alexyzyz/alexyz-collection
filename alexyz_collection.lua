@@ -61,7 +61,7 @@ SMODS.Joker { -- Seeing Things
         local target_consumable
 
         if context.before and G.consumeables.cards[1] then
-            local target = pseudorandom_element(G.consumeables.cards)
+            local target = pseudorandom_element(G.consumeables.cards, pseudoseed('see_things_target'))
             if target ~= nil then
                 target_consumable = target
                 local event_flip_down = Event({
@@ -229,10 +229,10 @@ SMODS.Joker { -- Peer Pressure
     loc_txt = {
         ['name'] = 'Peer Pressure',
         ['text'] = {
-            'If hand contains {C:attention}five scoring cards{}',
-            'with {C:attention}only two suits{}, change the suit',
-            'of the leftmost card of the lesser suit',
-            'into the greater suit, and lose {C:money}$2{}'
+            'If hand contains {C:attention}four scoring cards{}',
+            'and {C:attention}one non-scoring card{}, change the',
+            'suit of the non-scoring card into one',
+            'of the scoring card\'s suit'
         }
     },
     atlas = 'alexyz_jokers',
@@ -249,57 +249,60 @@ SMODS.Joker { -- Peer Pressure
 
     calculate = function(self, card, context)
         if context.cardarea == G.jokers and context.before then
-            local tally_suit = {
-                Spade = {},
-                Heart = {},
-                Club = {},
-                Diamond = {},
-            }
-            local unique_suits_count = 0
-            local greatest_suit_count = 0
-            local greatest_suit
-
-            for i = 1, #context.scoring_hand do
-                local curr_card = context.scoring_hand[i]
-                local curr_card_suit = curr_card.base.suit
-
-                if not tally_suit[curr_card_suit] then
-                    unique_suits_count = unique_suits_count + 1
-                    tally_suit[curr_card_suit] = { card }
-                else
-                    table.insert(tally_suit[curr_card_suit], 1, card)
-                end
-
-                if #tally_suit[curr_card_suit] > greatest_suit_count then
-                    greatest_suit_count = #tally_suit[curr_card_suit]
-                    greatest_suit = curr_card_suit
-                end
-            end
-
-            if unique_suits_count ~= 2 then
+            -- Joker needs 5 played cards to trigger
+            if #context.full_hand ~= 5 then
                 return
             end
 
-            for i = 1, #context.scoring_hand do
-                local curr_card = context.scoring_hand[i]
-                local curr_card_suit = curr_card.base.suit
+            -- Joker needs 1 non-scoring card to trigger
+            if #context.scoring_hand ~= 4 then
+                return
+            end
 
-                if curr_card_suit ~= greatest_suit then
-                    G.E_MANAGER:add_event(Event({
-                        trigger = 'after',
-                        delay = 0.1,
-                        func = function()
-                            curr_card:juice_up(0.3, 0.3)
-                            curr_card:change_suit(greatest_suit); return true
-                        end
-                    }))
-
-                    return {
-                        message = 'Convert!',
-                        card = card
-                    }
+            local non_scoring_card
+            -- Find the non-scoring card
+            for i = 1, #context.full_hand do
+                local curr_card = context.full_hand[i]
+                local curr_card_is_scoring = false
+                for j = 1, #context.scoring_hand do
+                    local curr_scoring_card = context.scoring_hand[j]
+                    if curr_card == curr_scoring_card then
+                        curr_card_is_scoring = true
+                        break
+                    end
+                end
+                if not curr_card_is_scoring then
+                    non_scoring_card = curr_card
+                    break
                 end
             end
+
+            -- Get the suit from a random scoring card
+            local random_scoring_card = pseudorandom_element(context.scoring_hand, pseudoseed('peer_pressure'))
+            local pressure_is_useful = random_scoring_card.base.suit ~= non_scoring_card.base.suit
+
+            card_eval_status_text(random_scoring_card, 'extra', nil, nil, nil,
+                { message = pressure_is_useful and 'Pressure!' or 'Conformed!' })
+
+            if pressure_is_useful then
+                G.E_MANAGER:add_event(Event({
+                    trigger = 'after',
+                    delay = 0.2,
+                    func = function()
+                        non_scoring_card:juice_up(0.3, 0.3)
+                        non_scoring_card:change_suit(random_scoring_card.base.suit)
+                        return true
+                    end
+                }))
+            end
+
+            G.E_MANAGER:add_event(Event({
+                trigger = 'after',
+                delay = pressure_is_useful and 1.5 or 0.8,
+                func = function()
+                    return true
+                end
+            }))
         end
     end
 }
@@ -463,8 +466,7 @@ SMODS.Challenge {
         }
     },
     jokers = {
-        { id = 'j_alexyz_peer_pressure' },
-        { id = 'j_splash' }
+        { id = 'j_alexyz_peer_pressure' }
     },
     consumeables = {},
     vouchers = {},
@@ -552,7 +554,7 @@ function swap_tarot(target_card)
     -- Fall back to Strength
     local new_center_key = 'c_strength'
     if get_table_length(pool) > 0 then
-        new_center_key = pseudorandom_element(pool, pseudoseed('hallucinate'))
+        new_center_key = pseudorandom_element(pool, pseudoseed('see_things_swap'))
     end
     local new_center = G.P_CENTERS[new_center_key]
 
