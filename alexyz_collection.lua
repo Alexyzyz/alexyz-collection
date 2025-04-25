@@ -8,7 +8,6 @@ SMODS.Atlas {
 
 -- Jokers
 
-
 SMODS.Joker { -- Chunter
     name = "The Hunter",
     key = "chunter",
@@ -229,7 +228,7 @@ SMODS.Joker { -- Peer Pressure
     loc_txt = {
         ['name'] = 'Peer Pressure',
         ['text'] = {
-            'If hand contains {C:attention}four scoring cards{}',
+            'If played hand contains {C:attention}four scoring cards{}',
             'and {C:attention}one non-scoring card{}, change the',
             'suit of the non-scoring card into one',
             'of the scoring card\'s suit'
@@ -307,177 +306,490 @@ SMODS.Joker { -- Peer Pressure
     end
 }
 
--- Challenges
-
-SMODS.Challenge {
-    name = "Real Run: Seeing Things",
-    key = "real_carl",
+SMODS.Joker { -- Spotlight
+    name = "Spotlight",
+    key = "spotlight",
     loc_txt = {
-        ['name'] = 'Real Run: Seeing Things'
-    },
-    rules = {
-        custom = {},
-        modifiers = {}
-    },
-    jokers = {
-        { id = 'j_alexyz_carl' },
-    },
-    consumeables = {},
-    vouchers = {},
-    deck = {
-        type = 'Challenge Deck'
-    },
-    restrictions = {
-        banned_cards = {},
-        banned_tags = {},
-        banned_other = {}
-    }
-}
-
-SMODS.Challenge {
-    name = "Test: Seeing Things",
-    key = "test_carl",
-    loc_txt = {
-        ['name'] = 'Test: Seeing Things'
-    },
-    rules = {
-        custom = {},
-        modifiers = {
-            { id = 'hands',            value = 999 },
-            { id = 'consumable_slots', value = 5 }
+        ['name'] = 'Spotlight',
+        ['text'] = {
+            'Force a card to be selected.',
+            'If that card scores in a {C:attention}five-card hand{},',
+            'turn that card into a {C:attention}Bonus{} or {C:attention}Mult{} card'
         }
     },
-    jokers = {
-        { id = 'j_alexyz_carl' },
+    atlas = 'alexyz_jokers',
+    pos = {
+        x = 0,
+        y = 1
     },
-    consumeables = {
-        { id = 'c_magician' }
+    cost = 1,
+    rarity = 1,
+    blueprint_compat = true,
+    eternal_compat = true,
+    unlocked = true,
+    discovered = true,
+
+    config = {
+        extra = {
+            spotlit_card = nil,
+        },
     },
-    vouchers = {},
-    deck = {
-        type = 'Challenge Deck'
-    },
-    restrictions = {
-        banned_cards = {},
-        banned_tags = {},
-        banned_other = {}
-    }
+
+    loc_vars = function(self, info_queue, card)
+        info_queue[#info_queue + 1] = G.P_CENTERS.m_bonus
+        info_queue[#info_queue + 1] = G.P_CENTERS.m_mult
+    end,
+
+    calculate = function(self, card, context)
+        if context.hand_drawn then
+            -- The following code is copy-pasted from Cerulean Bell's
+            local any_forced = nil
+            for k, v in ipairs(G.hand.cards) do
+                if v.ability.forced_selection then
+                    any_forced = true
+                end
+            end
+            if not any_forced then
+                G.hand:unhighlight_all()
+                local target_card = pseudorandom_element(G.hand.cards, pseudoseed('spotlight'))
+                target_card.ability.forced_selection = true
+                G.hand:add_to_highlighted(target_card)
+                card.ability.extra.spotlit_card = target_card
+            end
+        end
+        if context.cardarea == G.jokers and context.before then
+            -- Joker needs 5 scoring cards to trigger
+            if #context.scoring_hand < 5 then
+                return
+            end
+
+            -- See if the spotlit card is involved in scoring
+            for k, v in ipairs(context.scoring_hand) do
+                if v == card.ability.extra.spotlit_card then
+                    local possible_enhancements = {
+                        m_bonus = { G.P_CENTERS.m_bonus, 'Bonus Up!' },
+                        m_mult = { G.P_CENTERS.m_mult, 'Mult Up!' }
+                    }
+                    local random_enhancement = pseudorandom_element(possible_enhancements,
+                        pseudoseed('spotlight_enhancement'))
+
+                    -- card_eval_status_text(v, 'extra', nil, nil, nil, { message = random_enhancement[2] })
+                    v:set_ability(random_enhancement[1], nil, true)
+
+                    G.E_MANAGER:add_event(Event({
+                        func = function()
+                            v:juice_up()
+                            return true
+                        end
+                    }))
+
+                    G.E_MANAGER:add_event(Event({
+                        trigger = 'after',
+                        delay = 0.8,
+                        func = function()
+                            return true
+                        end
+                    }))
+                end
+            end
+        end
+    end
 }
 
-SMODS.Challenge {
-    name = "Real Run: Bonus Paycheck",
-    key = "real_bonus_paycheck",
+SMODS.Joker { -- Setting Up Shop
+    name = "Setting Up Shop",
+    key = "setting_up_shop",
     loc_txt = {
-        ['name'] = 'Real Run: Bonus Paycheck'
-    },
-    rules = {
-        custom = {},
-        modifiers = {}
-    },
-    jokers = {
-        { id = 'j_alexyz_bonus_paycheck' },
-    },
-    consumeables = {
-        { id = 'c_heirophant' },
-        { id = 'c_empress' },
-    },
-    vouchers = {},
-    deck = {
-        type = 'Challenge Deck'
-    },
-    restrictions = {
-        banned_cards = {},
-        banned_tags = {},
-        banned_other = {}
-    }
-}
-
-SMODS.Challenge {
-    name = "Test: Bonus Paycheck",
-    key = "test_bonus_paycheck",
-    loc_txt = {
-        ['name'] = 'Test: Bonus Paycheck'
-    },
-    rules = {
-        custom = {},
-        modifiers = {
-            { id = 'hands',            value = 999 },
-            { id = 'consumable_slots', value = 5 }
+        ['name'] = 'Setting Up Shop',
+        ['text'] = {
+            'After {C:attention}2{} rounds, sell this',
+            'Joker and get {C:attention}Bargain Sale{}',
+            '{C:inactive}(#1#){}'
         }
     },
-    jokers = {
-        { id = 'j_alexyz_bonus_paycheck' },
+    atlas = 'alexyz_jokers',
+    pos = {
+        x = 1,
+        y = 1
     },
-    consumeables = {
-        { id = 'c_heirophant' },
-        { id = 'c_heirophant' },
-        { id = 'c_heirophant' },
-        { id = 'c_empress' },
-        { id = 'c_empress' }
+    cost = 1,
+    rarity = 1,
+    blueprint_compat = true,
+    eternal_compat = true,
+    unlocked = true,
+    discovered = true,
+
+    config = {
+        extra = {
+            rounds_remaining = 2,
+            state_text = '2 rounds remaining'
+        },
     },
-    vouchers = {},
-    deck = {
-        type = 'Challenge Deck'
-    },
-    restrictions = {
-        banned_cards = {},
-        banned_tags = {},
-        banned_other = {}
-    }
+
+    loc_vars = function(self, info_queue, card)
+        info_queue[#info_queue + 1] = { key = 'j_alexyz_bargain_sale', set = 'Other' }
+        return { vars = { card.ability.extra.state_text } }
+    end,
+
+    calculate = function(self, card, context)
+        if context.selling_self then
+            if card.ability.extra.rounds_remaining == 0 then
+                local bargain_sale = create_card('Joker', G.jokers, nil, 0.99, nil, nil, 'j_alexyz_bargain_sale',
+                    'setting_up_shop')
+                bargain_sale:add_to_deck()
+                G.jokers:emplace(bargain_sale)
+
+                -- TODO:
+                -- This logic should've been in Bargain Sale,
+                -- but I haven't found a signal that triggers when a card is created
+                -- so for now I've performed a sin and put it here
+                G.E_MANAGER:add_event(Event({
+                    func = function()
+                        G.GAME.current_round.free_rerolls = 2
+                        calculate_reroll_cost(true)
+                        return true
+                    end
+                }))
+            end
+        end
+
+        if context.end_of_round and not context.blueprint and not context.repetition and not context.individual then
+            if card.ability.extra.rounds_remaining > 0 then
+                card.ability.extra.rounds_remaining = card.ability.extra.rounds_remaining - 1
+            end
+            local rounds_remaining = card.ability.extra.rounds_remaining
+
+            if rounds_remaining > 1 then
+                card_eval_status_text(card, 'extra', nil, nil, nil, { message = rounds_remaining .. '!' })
+                card.ability.extra.state_text = rounds_remaining .. ' rounds remaining'
+            elseif rounds_remaining == 1 then
+                card_eval_status_text(card, 'extra', nil, nil, nil, { message = 'Open soon!' })
+                card.ability.extra.state_text = rounds_remaining .. ' round remaining'
+            elseif rounds_remaining == 0 then
+                card_eval_status_text(card, 'extra', nil, nil, nil, { message = 'Ready!' })
+                card.ability.extra.state_text = 'Ready!'
+
+                -- Just keep throbbing until the card is removed
+                local eval = function(card)
+                    return not card.REMOVED
+                end
+                juice_card_until(card, eval, true)
+            end
+        end
+    end
 }
 
-SMODS.Challenge {
-    name = "Test: To the Stars",
-    key = "test_to_the_stars",
+SMODS.Joker { -- Bargain Sale
+    name = "Bargain Sale",
+    key = "bargain_sale",
     loc_txt = {
-        ['name'] = 'Test: To the Stars'
-    },
-    rules = {
-        custom = {},
-        modifiers = {
-            { id = 'hands', value = 999 },
+        ['name'] = 'Bargain Sale',
+        ['text'] = {
+            '{C:green}Rerolls{} always cost {C:money}$1{}',
+            '{C:red,E:2}Self-destructs{} after exiting shop'
         }
     },
-    jokers = {
-        { id = 'j_alexyz_to_the_stars' }
+    atlas = 'alexyz_jokers',
+    pos = {
+        x = 2,
+        y = 1
     },
-    consumeables = {},
-    vouchers = {},
-    deck = {
-        type = 'Challenge Deck'
-    },
-    restrictions = {
-        banned_cards = {},
-        banned_tags = {},
-        banned_other = {}
-    }
+    cost = 1,
+    rarity = 1,
+    blueprint_compat = true,
+    eternal_compat = true,
+    unlocked = true,
+    discovered = true,
+
+    calculate = function(self, card, context)
+        if context.end_of_round then
+            G.GAME.current_round.free_rerolls = 2
+            calculate_reroll_cost(true)
+        end
+        if context.buying_card then
+            G.GAME.current_round.free_rerolls = 2
+            calculate_reroll_cost(true)
+        end
+        if context.reroll_shop then
+            G.GAME.current_round.free_rerolls = 2
+            calculate_reroll_cost(true)
+        end
+
+        if context.ending_shop then
+            G.GAME.current_round.free_rerolls = 0
+            calculate_reroll_cost(true)
+            card:start_dissolve()
+        end
+        if context.selling_self then
+            G.GAME.current_round.free_rerolls = 0
+            calculate_reroll_cost(true)
+        end
+    end
 }
 
-SMODS.Challenge {
-    name = "Test: Peer Pressure",
-    key = "test_peer_pressure",
+SMODS.Joker { -- Union
+    name = "Union Rally",
+    key = "union_rally",
     loc_txt = {
-        ['name'] = 'Test: Peer Pressure'
-    },
-    rules = {
-        custom = {},
-        modifiers = {
-            { id = 'hands', value = 999 },
+        ['name'] = 'Union Rally',
+        ['text'] = {
+            'If played hand contains:',
+            'A {C:attention}Bonus{} card, {C:mult}+1{} Mult',
+            'A {C:attention}Mult{} card, {C:chips}+3{} Chips',
+            'Both cards, gain {X:mult,C:white}X0.1{} Mult',
+            '{C:inactive}(Currently {C:blue}+#1#{C:inactive} Chips, {C:red}+#2#{C:inactive} Mult, {X:mult,C:white}X#3#{C:inactive} Mult)'
         }
     },
-    jokers = {
-        { id = 'j_alexyz_peer_pressure' }
+    atlas = 'alexyz_jokers',
+    pos = {
+        x = 2,
+        y = 0
     },
-    consumeables = {},
-    vouchers = {},
-    deck = {
-        type = 'Challenge Deck'
+    cost = 1,
+    rarity = 1,
+    blueprint_compat = true,
+    eternal_compat = true,
+    unlocked = true,
+    discovered = true,
+
+    config = {
+        extra = {
+            chips = 0,
+            mult = 0,
+            xmult = 1,
+        },
     },
-    restrictions = {
-        banned_cards = {},
-        banned_tags = {},
-        banned_other = {}
-    }
+
+    loc_vars = function(self, info_queue, card)
+        info_queue[#info_queue + 1] = G.P_CENTERS.m_bonus
+        info_queue[#info_queue + 1] = G.P_CENTERS.m_mult
+        return { vars = { card.ability.extra.chips, card.ability.extra.mult, card.ability.extra.xmult } }
+    end,
+
+    calculate = function(self, card, context)
+        if context.cardarea == G.jokers and context.before and context.scoring_hand then
+            local hand_contains_bonus = false
+            local hand_contains_mult = false
+
+            for k, v in ipairs(context.scoring_hand) do
+                if v.ability.name == 'Bonus' then
+                    hand_contains_bonus = true
+                end
+                if v.ability.name == 'Mult' then
+                    hand_contains_mult = true
+                end
+            end
+
+            if hand_contains_mult and hand_contains_bonus then
+                card.ability.extra.chips = card.ability.extra.chips + 3
+                card.ability.extra.mult = card.ability.extra.mult + 1
+                card.ability.extra.xmult = card.ability.extra.xmult + 0.1
+                return {
+                    message = 'Triple Up!',
+                    colour = G.C.PURPLE,
+                    card = card
+                }
+            elseif hand_contains_mult then
+                card.ability.extra.chips = card.ability.extra.chips + 3
+                return {
+                    message = 'Chip Up!',
+                    colour = G.C.CHIPS,
+                    card = card
+                }
+            elseif hand_contains_bonus then
+                card.ability.extra.mult = card.ability.extra.mult + 1
+                return {
+                    message = 'Mult Up!',
+                    colour = G.C.RED,
+                    card = card
+                }
+            end
+        end
+
+        if context.cardarea == G.jokers and context.joker_main then
+            return {
+                message = 'Rally!',
+                chip_mod = card.ability.extra.chips,
+                mult_mod = card.ability.extra.mult,
+                Xmult_mod = card.ability.extra.xmult,
+            }
+        end
+    end
+}
+
+SMODS.Joker { -- Reckless Shot
+    name = "Reckless Shot",
+    key = "reckless_shot",
+    loc_txt = {
+        ['name'] = 'Reckless Shot',
+        ['text'] = {
+            'Destroy a random card',
+            'held in hand at {C:attention}end of round{}',
+            '{C:inactive}({C:green}1 in 2{C:inactive} chance of destroying',
+            '{C:attention}an additional{C:inactive} card)'
+        }
+    },
+    atlas = 'alexyz_jokers',
+    pos = {
+        x = 2,
+        y = 0
+    },
+    cost = 1,
+    rarity = 1,
+    blueprint_compat = false,
+    eternal_compat = true,
+    unlocked = true,
+    discovered = true,
+
+    calculate = function(self, card, context)
+        if not G.hand.cards then
+            return
+        end
+        if context.end_of_round and not context.blueprint and not context.repetition and not context.individual then
+            -- This code is copy-pasted from Immolate's
+            -- Get the cards to destroy
+            local destroy_count = 1
+            if pseudorandom('reckless_shot_bonus') < G.GAME.probabilities.normal / 2 then
+                destroy_count = 2
+            end
+
+            local destroyed_cards = {}
+            local temp_hand = {}
+            for k, v in ipairs(G.hand.cards) do
+                temp_hand[#temp_hand + 1] = v
+            end
+
+            local sort_eval = function(a, b)
+                return not a.playing_card or not b.playing_card or a.playing_card < b.playing_card
+            end
+            table.sort(temp_hand, sort_eval)
+
+            pseudoshuffle(temp_hand, pseudoseed('reckless_shot'))
+
+            for i = 1, destroy_count do
+                destroyed_cards[#destroyed_cards + 1] = temp_hand[i]
+            end
+
+            -- Destroy the cards
+            G.E_MANAGER:add_event(Event({
+                trigger = 'after',
+                delay = 0.1,
+                func = function()
+                    for i = #destroyed_cards, 1, -1 do
+                        local card = destroyed_cards[i]
+                        if card.ability.name == 'Glass Card' then
+                            card:shatter()
+                        else
+                            card:start_dissolve(nil, i == #destroyed_cards)
+                        end
+                    end
+                    return true
+                end
+            }))
+            delay(0.5)
+            delay(0.3)
+            for i = 1, #G.jokers.cards do
+                G.jokers.cards[i]:calculate_joker({ remove_playing_cards = true, removed = destroyed_cards })
+            end
+        end
+    end
+}
+
+SMODS.Joker { -- Socket Man
+    name = "Socket Man",
+    key = "socket_man",
+    loc_txt = {
+        ['name'] = 'Socket Man',
+        ['text'] = {
+            '{X:mult,C:white}X3{} Mult',
+            'Debuff {C:attention}2{} random cards',
+            'held in hand at {C:attention}end of round'
+        }
+    },
+    atlas = 'alexyz_jokers',
+    pos = {
+        x = 2,
+        y = 0
+    },
+    cost = 1,
+    rarity = 1,
+    blueprint_compat = true,
+    eternal_compat = true,
+    unlocked = true,
+    discovered = true,
+
+    calculate = function(self, card, context)
+        if context.end_of_round and not context.blueprint and not context.repetition and not context.individual and G.hand.cards then
+            -- This code is copy-pasted from Immolate's
+            -- Get the cards to debuff
+            local debuffed_cards = {}
+            local temp_hand = {}
+            for k, v in ipairs(G.hand.cards) do
+                temp_hand[#temp_hand + 1] = v
+            end
+
+            local sort_eval = function(a, b)
+                return not a.playing_card or not b.playing_card or a.playing_card < b.playing_card
+            end
+            table.sort(temp_hand, sort_eval)
+            pseudoshuffle(temp_hand, pseudoseed('socket_man'))
+
+            for i = 1, 2 do
+                debuffed_cards[#debuffed_cards + 1] = temp_hand[i]
+            end
+
+            -- Debuff the cards
+            G.E_MANAGER:add_event(Event({
+                trigger = 'after',
+                delay = 0.3,
+                func = function()
+                    for i = #debuffed_cards, 1, -1 do
+                        local target_card = debuffed_cards[i]
+                        target_card.ability.perma_debuff = true
+                        target_card:set_debuff(true)
+                        target_card:juice_up(0.3, 0.3)
+                    end
+                    return true
+                end
+            }))
+            delay(1.5)
+        end
+    end
+}
+
+SMODS.Joker { -- Template
+    name = "Test",
+    key = "test",
+    loc_txt = {
+        ['name'] = 'Test',
+        ['text'] = {
+            ''
+        }
+    },
+    atlas = 'alexyz_jokers',
+    pos = {
+        x = 2,
+        y = 0
+    },
+    cost = 1,
+    rarity = 1,
+    blueprint_compat = true,
+    eternal_compat = true,
+    unlocked = true,
+    discovered = true,
+
+    config = {
+        extra = {
+        },
+    },
+
+    loc_vars = function(self, info_queue, card)
+        info_queue[#info_queue + 1] = G.P_CENTERS.m_bonus
+        info_queue[#info_queue + 1] = G.P_CENTERS.m_mult
+    end,
+
+    calculate = function(self, card, context)
+    end
 }
 
 -- Helper functions
@@ -632,3 +944,238 @@ function shallow_copy(orig)
     end
     return copy
 end
+
+-- Challenges
+
+SMODS.Challenge { -- DEMO: Seeing Things
+    name = "DEMO: Seeing Things",
+    key = "demo_carl",
+    loc_txt = {
+        ['name'] = 'DEMO: Seeing Things'
+    },
+    rules = {
+        custom = {},
+        modifiers = {}
+    },
+    jokers = {
+        { id = 'j_alexyz_carl' }
+    },
+    consumeables = {
+        { id = 'c_strength' }
+    },
+    vouchers = {},
+    deck = {
+        type = 'Challenge Deck'
+    },
+    restrictions = {
+        banned_cards = {},
+        banned_tags = {},
+        banned_other = {}
+    }
+}
+
+SMODS.Challenge { -- DEMO: Bonus Paycheck
+    name = "DEMO: Bonus Paycheck",
+    key = "demo_bonus_paycheck",
+    loc_txt = {
+        ['name'] = 'DEMO: Bonus Paycheck'
+    },
+    rules = {
+        custom = {},
+        modifiers = {}
+    },
+    jokers = {
+        { id = 'j_alexyz_bonus_paycheck' },
+    },
+    consumeables = {
+        { id = 'c_heirophant' },
+        { id = 'c_empress' },
+    },
+    vouchers = {},
+    deck = {
+        type = 'Challenge Deck'
+    },
+    restrictions = {
+        banned_cards = {},
+        banned_tags = {},
+        banned_other = {}
+    }
+}
+
+SMODS.Challenge { -- DEMO: To the Stars
+    name = "DEMO: To the Stars",
+    key = "demo_to_the_stars",
+    loc_txt = {
+        ['name'] = 'DEMO: To the Stars'
+    },
+    rules = {
+        custom = {},
+        modifiers = {}
+    },
+    jokers = {
+        { id = 'j_alexyz_to_the_stars' }
+    },
+    consumeables = {
+        { id = 'c_mercury' },
+        { id = 'c_mercury' }
+    },
+    vouchers = {},
+    deck = {
+        type = 'Challenge Deck'
+    },
+    restrictions = {
+        banned_cards = {},
+        banned_tags = {},
+        banned_other = {}
+    }
+}
+
+SMODS.Challenge { -- DEMO: Peer Pressure
+    name = "DEMO: Peer Pressure",
+    key = "demo_peer_pressure",
+    loc_txt = {
+        ['name'] = 'DEMO: Peer Pressure'
+    },
+    rules = {
+        custom = {},
+        modifiers = {}
+    },
+    jokers = {
+        { id = 'j_alexyz_peer_pressure' }
+    },
+    consumeables = {},
+    vouchers = {},
+    deck = {
+        type = 'Challenge Deck'
+    },
+    restrictions = {
+        banned_cards = {},
+        banned_tags = {},
+        banned_other = {}
+    }
+}
+
+SMODS.Challenge { -- DEMO: Bargain Sale
+    name = "DEMO: Bargain Sale",
+    key = "demo_bargain_sale",
+    loc_txt = {
+        ['name'] = 'DEMO: Bargain Sale'
+    },
+    rules = {
+        custom = {},
+        modifiers = {
+            { id = "dollars",          value = 999999 },
+            { id = "hands",            value = 999 },
+            { id = "discards",         value = 999 },
+            { id = "joker_slots",      value = 999 },
+            { id = "consumable_slots", value = 999 }
+        }
+    },
+    jokers = {
+        { id = 'j_alexyz_setting_up_shop' },
+        { id = 'j_alexyz_bargain_sale' },
+        { id = 'j_alexyz_spotlight' },
+        { id = 'j_bull' }
+    },
+    consumeables = {},
+    vouchers = {},
+    deck = {
+        type = 'Challenge Deck'
+    },
+    restrictions = {
+        banned_cards = {},
+        banned_tags = {},
+        banned_other = {}
+    }
+}
+
+SMODS.Challenge { -- DEMO: Union Rally
+    name = "DEMO: Union Rally",
+    key = "demo_union_rally",
+    loc_txt = {
+        ['name'] = 'DEMO: Union Rally'
+    },
+    rules = {
+        custom = {},
+        modifiers = {}
+    },
+    jokers = {
+        { id = 'j_alexyz_union_rally' },
+    },
+    consumeables = {},
+    vouchers = {},
+    deck = {
+        type = 'Challenge Deck'
+    },
+    restrictions = {
+        banned_cards = {},
+        banned_tags = {},
+        banned_other = {}
+    }
+}
+
+SMODS.Challenge { -- DEMO: Socket Man
+    name = "DEMO: Socket Man",
+    key = "demo_socket_man",
+    loc_txt = {
+        ['name'] = 'DEMO: Socket Man'
+    },
+    rules = {
+        custom = {},
+        modifiers = {
+            { id = "dollars",          value = 999999 },
+            { id = "hands",            value = 999 },
+            { id = "discards",         value = 999 },
+            { id = "joker_slots",      value = 999 },
+            { id = "consumable_slots", value = 999 }
+        }
+    },
+    jokers = {
+        { id = 'j_alexyz_socket_man' },
+        { id = 'j_bootstraps' }
+    },
+    consumeables = {
+    },
+    vouchers = {},
+    deck = {
+        type = 'Challenge Deck'
+    },
+    restrictions = {
+        banned_cards = {},
+        banned_tags = {},
+        banned_other = {}
+    }
+}
+
+SMODS.Challenge { -- DEMO: Reckless Shot
+    name = "DEMO: Reckless Shot",
+    key = "demo_reckless_shot",
+    loc_txt = {
+        ['name'] = 'DEMO: Reckless Shot'
+    },
+    rules = {
+        custom = {},
+        modifiers = {
+            { id = "dollars",          value = 999999 },
+            { id = "hands",            value = 999 },
+            { id = "discards",         value = 999 },
+            { id = "joker_slots",      value = 999 },
+            { id = "consumable_slots", value = 999 }
+        }
+    },
+    jokers = {
+        { id = 'j_alexyz_reckless_shot' },
+        { id = 'j_bull' }
+    },
+    consumeables = {
+    },
+    vouchers = {},
+    deck = {
+        type = 'Challenge Deck'
+    },
+    restrictions = {
+        banned_cards = {},
+        banned_tags = {},
+        banned_other = {}
+    }
+}
