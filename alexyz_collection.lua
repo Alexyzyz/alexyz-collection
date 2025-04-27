@@ -20,8 +20,8 @@ SMODS.Joker { -- Chunter
     },
     atlas = 'alexyz_jokers',
     pos = {
-        x = 0,
-        y = 0
+        y = 0,
+        x = 0
     },
     cost = 1,
     rarity = 1,
@@ -46,8 +46,8 @@ SMODS.Joker { -- Seeing Things
     },
     atlas = 'alexyz_jokers',
     pos = {
-        x = 1,
-        y = 0
+        y = 0,
+        x = 1
     },
     cost = 1,
     rarity = 1,
@@ -116,8 +116,8 @@ SMODS.Joker { -- Bonus Paycheck
     },
     atlas = 'alexyz_jokers',
     pos = {
-        x = 2,
-        y = 0
+        y = 0,
+        x = 2
     },
     cost = 1,
     rarity = 1,
@@ -175,8 +175,8 @@ SMODS.Joker { -- To the Stars
     },
     atlas = 'alexyz_jokers',
     pos = {
-        x = 3,
-        y = 0
+        y = 0,
+        x = 3
     },
     cost = 1,
     rarity = 1,
@@ -236,8 +236,8 @@ SMODS.Joker { -- Peer Pressure
     },
     atlas = 'alexyz_jokers',
     pos = {
-        x = 4,
-        y = 0
+        y = 0,
+        x = 4
     },
     cost = 1,
     rarity = 1,
@@ -319,8 +319,8 @@ SMODS.Joker { -- Spotlight
     },
     atlas = 'alexyz_jokers',
     pos = {
-        x = 0,
-        y = 1
+        y = 1,
+        x = 0
     },
     cost = 1,
     rarity = 1,
@@ -409,8 +409,8 @@ SMODS.Joker { -- Setting Up Shop
     },
     atlas = 'alexyz_jokers',
     pos = {
-        x = 1,
-        y = 1
+        y = 1,
+        x = 1
     },
     cost = 1,
     rarity = 1,
@@ -491,8 +491,8 @@ SMODS.Joker { -- Bargain Sale
     },
     atlas = 'alexyz_jokers',
     pos = {
-        x = 2,
-        y = 1
+        y = 1,
+        x = 2
     },
     cost = 1,
     rarity = 1,
@@ -500,6 +500,10 @@ SMODS.Joker { -- Bargain Sale
     eternal_compat = true,
     unlocked = true,
     discovered = true,
+
+    -- This Joker never appears in the shop naturally
+    -- and can only be obtained through Setting Up Shop
+    yes_pool_flag = 'never',
 
     calculate = function(self, card, context)
         if context.end_of_round then
@@ -542,8 +546,8 @@ SMODS.Joker { -- Union
     },
     atlas = 'alexyz_jokers',
     pos = {
-        x = 2,
-        y = 0
+        y = 0,
+        x = 2
     },
     cost = 1,
     rarity = 1,
@@ -631,8 +635,8 @@ SMODS.Joker { -- Reckless Shot
     },
     atlas = 'alexyz_jokers',
     pos = {
-        x = 2,
-        y = 0
+        y = 1,
+        x = 3
     },
     cost = 1,
     rarity = 1,
@@ -695,15 +699,16 @@ SMODS.Joker { -- Reckless Shot
     end
 }
 
-SMODS.Joker { -- Socket Man
-    name = "Socket Man",
-    key = "socket_man",
+SMODS.Joker { -- Brian
+    name = "Brian",
+    key = "brian",
     loc_txt = {
-        ['name'] = 'Socket Man',
+        ['name'] = 'Brian',
         ['text'] = {
-            '{X:mult,C:white}X3{} Mult',
             'Debuff {C:attention}2{} random cards',
-            'held in hand at {C:attention}end of round'
+            'held in hand at {C:attention}end of round',
+            'and this Joker gains {X:mult,C:white}X0.2{} Mult',
+            '{C:inactive}(Currently {X:mult,C:white}X#1#{C:inactive} Mult)'
         }
     },
     atlas = 'alexyz_jokers',
@@ -717,6 +722,17 @@ SMODS.Joker { -- Socket Man
     eternal_compat = true,
     unlocked = true,
     discovered = true,
+
+    config = {
+        extra = {
+            xmult = 1,
+        }
+    },
+
+    loc_vars = function(self, info_queue, card)
+        info_queue[#info_queue + 1] = G.P_CENTERS.e_negative
+        return { vars = { card.ability.extra.xmult } }
+    end,
 
     calculate = function(self, card, context)
         if context.end_of_round and not context.blueprint and not context.repetition and not context.individual and G.hand.cards then
@@ -734,9 +750,14 @@ SMODS.Joker { -- Socket Man
             table.sort(temp_hand, sort_eval)
             pseudoshuffle(temp_hand, pseudoseed('socket_man'))
 
+            local xmult_gain = 0
             for i = 1, 2 do
+                if not temp_hand[i].perma_debuff then
+                    xmult_gain = xmult_gain + 0.2
+                end
                 debuffed_cards[#debuffed_cards + 1] = temp_hand[i]
             end
+            card.ability.extra.xmult = card.ability.extra.xmult + xmult_gain
 
             -- Debuff the cards
             G.E_MANAGER:add_event(Event({
@@ -753,6 +774,253 @@ SMODS.Joker { -- Socket Man
                 end
             }))
             delay(1.5)
+        end
+
+        if context.cardarea == G.jokers and context.joker_main then
+            return {
+                message = localize { type = 'variable', key = 'a_xmult', vars = { card.ability.extra.xmult } },
+                Xmult_mod = card.ability.extra.xmult,
+            }
+        end
+    end
+}
+
+SMODS.Joker { -- Seal of Approval
+    name = "Seal of Approval",
+    key = "seal_of_approval",
+    loc_txt = {
+        ['name'] = 'Seal of Approval',
+        ['text'] = {
+            'Each played {C:attention}7{} and {C:attention}Lucky{} card',
+            'without a seal have a {C:green}1 in 2{}',
+            'chance to gain a random {C:attention}seal{}',
+            'when scored'
+        }
+    },
+    atlas = 'alexyz_jokers',
+    pos = {
+        x = 2,
+        y = 0
+    },
+    cost = 1,
+    rarity = 1,
+    blueprint_compat = true,
+    eternal_compat = true,
+    unlocked = true,
+    discovered = true,
+
+    config = {
+        extra = {
+        },
+    },
+
+    loc_vars = function(self, info_queue, card)
+        info_queue[#info_queue + 1] = G.P_CENTERS.m_lucky
+    end,
+
+    calculate = function(self, card, context)
+        if context.cardarea == G.play and context.individual then
+            local card_is_a_7 = context.other_card:get_id() == 7
+            local card_is_lucky = SMODS.get_enhancements(context.other_card)["m_lucky"] == true
+            local card_has_no_seal = not context.other_card:get_seal()
+            local approved = pseudorandom('seal_of_approval') < G.GAME.probabilities.normal / 2
+
+            if (card_is_a_7 or card_is_lucky) and card_has_no_seal and approved then
+                local seal_type_num = pseudorandom(pseudoseed('seal_of_approval_sealtype' .. G.GAME.round_resets.ante))
+                local seal_type = 'Purple'
+
+                if seal_type_num > 0.75 then
+                    seal_type = 'Red'
+                elseif seal_type_num > 0.5 then
+                    seal_type = 'Blue'
+                elseif seal_type_num > 0.25 then
+                    seal_type = 'Gold'
+                end
+
+                G.E_MANAGER:add_event(Event({
+                    trigger = 'after',
+                    delay = 0.6,
+                    func = function()
+                        context.other_card:juice_up(0.3, 0.3)
+                        context.other_card:set_seal(seal_type, nil, true)
+                        return true
+                    end
+                }))
+            end
+        end
+    end
+}
+
+SMODS.Joker { -- Hiking Bag
+    name = "Hiking Bag",
+    key = "hiking_bag",
+    loc_txt = {
+        ['name'] = 'Hiking Bag',
+        ['text'] = {
+            '{C:attention}+1{} consumable slot for',
+            'every empty {C:attention}Joker{} slot'
+        }
+    },
+    atlas = 'alexyz_jokers',
+    pos = {
+        x = 2,
+        y = 0
+    },
+    cost = 1,
+    rarity = 1,
+    blueprint_compat = false,
+    eternal_compat = true,
+    unlocked = true,
+    discovered = true,
+
+    config = {
+        extra = {
+            -- The update() method gets called too many times before add_to_cek() finishes properly
+            -- so we need this flag to prevent the Joker from adding thousands of consumable slots
+            initialized = false,
+            added_slot_count = 0
+        },
+    },
+
+    update = function(self, card, dt)
+        if not card.ability.extra.initialized then
+            return
+        end
+
+        local curr_added_slot_count = G.jokers.config.card_limit - #G.jokers.cards
+        local delta_added_slot_count = curr_added_slot_count - card.ability.extra.added_slot_count
+
+        if delta_added_slot_count == 0 then
+            return
+        end
+        G.consumeables.config.card_limit = G.consumeables.config.card_limit + delta_added_slot_count
+        card.ability.extra.added_slot_count = curr_added_slot_count
+    end,
+
+    add_to_deck = function(self, card, from_debuff)
+        G.E_MANAGER:add_event(Event({
+            func = function()
+                local curr_added_slot_count = G.jokers.config.card_limit - #G.jokers.cards
+                G.consumeables.config.card_limit = G.consumeables.config.card_limit + curr_added_slot_count
+                card.ability.extra.added_slot_count = curr_added_slot_count
+                card.ability.extra.initialized = true
+                return true
+            end
+        }))
+    end,
+
+    remove_from_deck = function(self, card, from_debuff)
+        G.E_MANAGER:add_event(Event({
+            func = function()
+                G.consumeables.config.card_limit = G.consumeables.config.card_limit - card.ability.extra
+                    .added_slot_count
+                return true
+            end
+        }))
+    end
+}
+
+SMODS.Joker { -- Socket Man
+    name = "Socket Man",
+    key = "socket_man",
+    loc_txt = {
+        ['name'] = 'Socket Man',
+        ['text'] = {
+            'If {C:attention}first hand{} of round',
+            'has only {C:attention}1{} card,',
+            'that card becomes {C:dark_edition}Negative{}'
+        }
+    },
+    atlas = 'alexyz_jokers',
+    pos = {
+        x = 2,
+        y = 0
+    },
+    cost = 1,
+    rarity = 1,
+    blueprint_compat = true,
+    eternal_compat = true,
+    unlocked = true,
+    discovered = true,
+
+    calculate = function(self, card, context)
+        if context.cardarea == G.jokers and context.before and G.GAME.current_round.hands_played == 0 and context.scoring_hand and #context.scoring_hand == 1 then
+            context.scoring_hand[1]:set_edition({ negative = true })
+        end
+    end
+}
+
+SMODS.Joker { -- Abduction
+    name = "Abduction",
+    key = "abduction",
+    loc_txt = {
+        ['name'] = 'Abduction',
+        ['text'] = {
+            'On {C:attention}first hand{} of round,',
+            'discard a random card held in hand and',
+            'this Joker gains that card\'s {C:attention}rank{} in {C:chips}Chips{}',
+            '{C:inactive}(Currently {C:chips}+#1#{C:inactive} Chips)'
+        }
+    },
+    atlas = 'alexyz_jokers',
+    pos = {
+        x = 2,
+        y = 0
+    },
+    cost = 1,
+    rarity = 1,
+    blueprint_compat = true,
+    eternal_compat = true,
+    unlocked = true,
+    discovered = true,
+
+    config = {
+        extra = {
+            chips = 0
+        },
+    },
+
+    loc_vars = function(self, info_queue, card)
+        return { vars = { card.ability.extra.chips } }
+    end,
+
+    calculate = function(self, card, context)
+        if context.cardarea == G.jokers and context.before and G.GAME.current_round.hands_played == 0 and G.hand.cards and #G.hand.cards > 0 then
+            G.E_MANAGER:add_event(Event({
+                func = function()
+                    local any_selected = nil
+                    local hand_cards = {}
+                    for k, v in ipairs(G.hand.cards) do
+                        hand_cards[#hand_cards + 1] = v
+                    end
+
+                    local selected_card, selected_card_key = pseudorandom_element(hand_cards, pseudoseed('abduction'))
+                    G.hand:add_to_highlighted(selected_card, true)
+                    table.remove(hand_cards, selected_card_key)
+                    any_selected = true
+                    play_sound('card1', 1)
+
+                    if any_selected then
+                        G.FUNCS.discard_cards_from_highlighted(nil, true)
+                        card.ability.extra.chips = card.ability.extra.chips + selected_card.base.nominal
+                    end
+
+                    return true
+                end
+            }))
+
+            return {
+                message = localize('k_upgrade_ex'),
+                card = card,
+                colour = G.C.CHIPS
+            }
+        end
+
+        if context.cardarea == G.jokers and context.joker_main and card.ability.extra.chips > 0 then
+            return {
+                message = localize { type = 'variable', key = 'a_chips', vars = { card.ability.extra.chips } },
+                chip_mod = card.ability.extra.chips
+            }
         end
     end
 }
@@ -1063,19 +1331,35 @@ SMODS.Challenge { -- DEMO: Bargain Sale
     },
     rules = {
         custom = {},
-        modifiers = {
-            { id = "dollars",          value = 999999 },
-            { id = "hands",            value = 999 },
-            { id = "discards",         value = 999 },
-            { id = "joker_slots",      value = 999 },
-            { id = "consumable_slots", value = 999 }
-        }
+        modifiers = {}
     },
     jokers = {
         { id = 'j_alexyz_setting_up_shop' },
-        { id = 'j_alexyz_bargain_sale' },
-        { id = 'j_alexyz_spotlight' },
-        { id = 'j_bull' }
+    },
+    consumeables = {},
+    vouchers = {},
+    deck = {
+        type = 'Challenge Deck'
+    },
+    restrictions = {
+        banned_cards = {},
+        banned_tags = {},
+        banned_other = {}
+    }
+}
+
+SMODS.Challenge { -- DEMO: Spotlight
+    name = "DEMO: Spotlight",
+    key = "demo_spotlight",
+    loc_txt = {
+        ['name'] = 'DEMO: Spotlight'
+    },
+    rules = {
+        custom = {},
+        modifiers = {}
+    },
+    jokers = {
+        { id = 'j_alexyz_spotlight' }
     },
     consumeables = {},
     vouchers = {},
@@ -1114,25 +1398,18 @@ SMODS.Challenge { -- DEMO: Union Rally
     }
 }
 
-SMODS.Challenge { -- DEMO: Socket Man
-    name = "DEMO: Socket Man",
-    key = "demo_socket_man",
+SMODS.Challenge { -- DEMO: Brian
+    name = "DEMO: Brian",
+    key = "demo_brian",
     loc_txt = {
-        ['name'] = 'DEMO: Socket Man'
+        ['name'] = 'DEMO: Brian'
     },
     rules = {
         custom = {},
-        modifiers = {
-            { id = "dollars",          value = 999999 },
-            { id = "hands",            value = 999 },
-            { id = "discards",         value = 999 },
-            { id = "joker_slots",      value = 999 },
-            { id = "consumable_slots", value = 999 }
-        }
+        modifiers = {}
     },
     jokers = {
-        { id = 'j_alexyz_socket_man' },
-        { id = 'j_bootstraps' }
+        { id = 'j_alexyz_brian' }
     },
     consumeables = {
     },
@@ -1155,17 +1432,120 @@ SMODS.Challenge { -- DEMO: Reckless Shot
     },
     rules = {
         custom = {},
+        modifiers = {}
+    },
+    jokers = {
+        { id = 'j_alexyz_reckless_shot' }
+    },
+    consumeables = {
+    },
+    vouchers = {},
+    deck = {
+        type = 'Challenge Deck'
+    },
+    restrictions = {
+        banned_cards = {},
+        banned_tags = {},
+        banned_other = {}
+    }
+}
+
+SMODS.Challenge { -- DEMO: Hiking Bag
+    name = "DEMO: Hiking Bag",
+    key = "demo_hiking_bag",
+    loc_txt = {
+        ['name'] = 'DEMO: Hiking Bag'
+    },
+    rules = {
+        custom = {},
+        modifiers = {}
+    },
+    jokers = {
+        { id = 'j_alexyz_hiking_bag' }
+    },
+    consumeables = {
+    },
+    vouchers = {},
+    deck = {
+        type = 'Challenge Deck'
+    },
+    restrictions = {
+        banned_cards = {},
+        banned_tags = {},
+        banned_other = {}
+    }
+}
+
+SMODS.Challenge { -- DEMO: Socket Man
+    name = "DEMO: Socket Man",
+    key = "demo_socket_man",
+    loc_txt = {
+        ['name'] = 'DEMO: Socket Man'
+    },
+    rules = {
+        custom = {},
+        modifiers = {}
+    },
+    jokers = {
+        { id = 'j_alexyz_socket_man' }
+    },
+    consumeables = {
+    },
+    vouchers = {},
+    deck = {
+        type = 'Challenge Deck'
+    },
+    restrictions = {
+        banned_cards = {},
+        banned_tags = {},
+        banned_other = {}
+    }
+}
+
+SMODS.Challenge { -- DEMO: Abduction
+    name = "DEMO: Abduction",
+    key = "demo_abduction",
+    loc_txt = {
+        ['name'] = 'DEMO: Abduction'
+    },
+    rules = {
+        custom = {},
+        modifiers = {}
+    },
+    jokers = {
+        { id = 'j_alexyz_abduction' },
+    },
+    consumeables = {
+    },
+    vouchers = {},
+    deck = {
+        type = 'Challenge Deck'
+    },
+    restrictions = {
+        banned_cards = {},
+        banned_tags = {},
+        banned_other = {}
+    }
+}
+
+SMODS.Challenge { -- DEMO: Template
+    name = "DEMO: Template",
+    key = "demo_template",
+    loc_txt = {
+        ['name'] = 'DEMO: Template'
+    },
+    rules = {
+        custom = {},
         modifiers = {
-            { id = "dollars",          value = 999999 },
-            { id = "hands",            value = 999 },
-            { id = "discards",         value = 999 },
-            { id = "joker_slots",      value = 999 },
-            { id = "consumable_slots", value = 999 }
+            { id = "dollars",          value = 1000000 },
+            { id = "hands",            value = 1000 },
+            { id = "discards",         value = 1000 },
+            { id = "joker_slots",      value = 1000 },
+            { id = "consumable_slots", value = 1000 }
         }
     },
     jokers = {
         { id = 'j_alexyz_reckless_shot' },
-        { id = 'j_bull' }
     },
     consumeables = {
     },
