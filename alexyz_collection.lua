@@ -730,7 +730,6 @@ SMODS.Joker { -- Brian
     },
 
     loc_vars = function(self, info_queue, card)
-        info_queue[#info_queue + 1] = G.P_CENTERS.e_negative
         return { vars = { card.ability.extra.xmult } }
     end,
 
@@ -943,6 +942,10 @@ SMODS.Joker { -- Socket Man
     unlocked = true,
     discovered = true,
 
+    loc_vars = function(self, info_queue, card)
+        info_queue[#info_queue + 1] = G.P_CENTERS.e_negative
+    end,
+
     calculate = function(self, card, context)
         if context.cardarea == G.jokers and context.before and G.GAME.current_round.hands_played == 0 and context.scoring_hand and #context.scoring_hand == 1 then
             context.scoring_hand[1]:set_edition({ negative = true })
@@ -1021,6 +1024,94 @@ SMODS.Joker { -- Abduction
                 message = localize { type = 'variable', key = 'a_chips', vars = { card.ability.extra.chips } },
                 chip_mod = card.ability.extra.chips
             }
+        end
+    end
+}
+
+SMODS.Joker { -- Limbo
+    name = "Limbo",
+    key = "limbo",
+    loc_txt = {
+        ['name'] = 'Limbo',
+        ['text'] = {
+            'Earn {C:money}$#1#{} at end of round.',
+            'Payout increases by {C:money}$2{} if round',
+            'is won with {C:attention}less than{C:blue} #2#{} points.',
+            '{C:red,E:2}Self-destructs{} if round is won',
+            'with {C:attention}more than{C:blue} #3#{} points'
+        }
+    },
+    atlas = 'alexyz_jokers',
+    pos = {
+        x = 2,
+        y = 0
+    },
+    cost = 1,
+    rarity = 1,
+    blueprint_compat = true,
+    eternal_compat = true,
+    unlocked = true,
+    discovered = true,
+
+    config = {
+        extra = {
+            payout = 1,
+            min_target = 100,
+            max_target = 200
+        },
+    },
+
+    loc_vars = function(self, info_queue, card)
+        return { vars = { card.ability.extra.payout, card.ability.extra.min_target, card.ability.extra.max_target } }
+    end,
+
+    calc_dollar_bonus = function(self, card)
+        return card.ability.extra.payout
+    end,
+
+    calculate = function(self, card, context)
+        if context.setting_blind then
+            card.ability.extra.min_target = G.GAME.blind.chips * 1.1
+            card.ability.extra.max_target = G.GAME.blind.chips * 1.5
+        end
+
+        if context.end_of_round and not context.blueprint and not context.repetition and not context.individual then
+            if G.GAME.chips < card.ability.extra.min_target then
+                card.ability.extra.payout = card.ability.extra.payout + 2
+
+                return {
+                    message = localize('k_upgrade_ex'),
+                    color = G.C.MONEY,
+                    card = card
+                }
+            elseif G.GAME.chips > card.ability.extra.max_target then
+                local event_self_destruct = Event({
+                    func = function()
+                        play_sound('tarot1')
+                        card.T.r = -0.2
+                        card:juice_up(0.3, 0.4)
+                        card.states.drag.is = true
+                        card.children.center.pinch.x = true
+                        G.E_MANAGER:add_event(Event({
+                            trigger = 'after',
+                            delay = 0.3,
+                            blockable = false,
+                            func = function()
+                                G.jokers:remove_card(self)
+                                card:remove()
+                                card = nil
+                                return true;
+                            end
+                        }))
+                        return true
+                    end
+                })
+                -- G.E_MANAGER:add_event(event_self_destruct)
+                return {
+                    message = 'Too high!',
+                    card = card
+                }
+            end
         end
     end
 }
@@ -1514,6 +1605,32 @@ SMODS.Challenge { -- DEMO: Abduction
     },
     jokers = {
         { id = 'j_alexyz_abduction' },
+    },
+    consumeables = {
+    },
+    vouchers = {},
+    deck = {
+        type = 'Challenge Deck'
+    },
+    restrictions = {
+        banned_cards = {},
+        banned_tags = {},
+        banned_other = {}
+    }
+}
+
+SMODS.Challenge { -- DEMO: Limbo
+    name = "DEMO: Limbo",
+    key = "demo_limbo",
+    loc_txt = {
+        ['name'] = 'DEMO: Limbo'
+    },
+    rules = {
+        custom = {},
+        modifiers = {}
+    },
+    jokers = {
+        { id = 'j_alexyz_limbo' }
     },
     consumeables = {
     },
